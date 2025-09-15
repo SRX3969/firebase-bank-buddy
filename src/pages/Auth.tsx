@@ -1,86 +1,97 @@
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useEffect } from 'react';
 
 const Auth = () => {
-  const { user, loading, signUp, signIn } = useAuth();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Login form state
-  const [loginData, setLoginData] = useState({
-    email: '',
-    password: ''
-  });
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
-  // Signup form state
-  const [signupData, setSignupData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    accountType: 'savings',
-    initialBalance: ''
-  });
-
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
-  }
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignIn = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(loginData.email, loginData.password);
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
       toast({
-        title: "Login Failed",
+        title: 'Error',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } else {
       toast({
-        title: "Login Successful",
-        description: "Welcome back!",
+        title: 'Success',
+        description: 'Logged in successfully!',
       });
+      navigate('/dashboard');
     }
 
     setIsLoading(false);
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signUp(signupData.email, signupData.password, {
-      name: signupData.name,
-      phone: signupData.phone,
-      account_type: signupData.accountType,
-      initial_balance: parseFloat(signupData.initialBalance) || 0
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
+    const phone = formData.get('phone') as string;
+    const accountType = formData.get('accountType') as string;
+    const initialBalance = parseFloat(formData.get('initialBalance') as string) || 0;
+
+    const redirectUrl = `${window.location.origin}/dashboard`;
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name,
+          phone,
+          account_type: accountType,
+          initial_balance: initialBalance,
+        }
+      }
     });
 
     if (error) {
       toast({
-        title: "Signup Failed",
+        title: 'Error',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } else {
       toast({
-        title: "Account Created",
-        description: "Please check your email to verify your account.",
+        title: 'Success',
+        description: 'Account created successfully! Please check your email to confirm your account.',
       });
     }
 
@@ -90,90 +101,84 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Bank Management System</CardTitle>
-          <CardDescription>Access your account or create a new one</CardDescription>
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Bank Management System</CardTitle>
+          <CardDescription className="text-center">
+            Secure banking for your financial needs
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+            <TabsContent value="signin">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div>
+                  <Label htmlFor="signin-email">Email</Label>
                   <Input
-                    id="login-email"
+                    id="signin-email"
+                    name="email"
                     type="email"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                     required
+                    placeholder="Enter your email"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                <div>
+                  <Label htmlFor="signin-password">Password</Label>
                   <Input
-                    id="login-password"
+                    id="signin-password"
+                    name="password"
                     type="password"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                     required
+                    placeholder="Enter your password"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Logging in...' : 'Login'}
+                  {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
             
             <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div>
                   <Label htmlFor="signup-name">Full Name</Label>
                   <Input
                     id="signup-name"
-                    value={signupData.name}
-                    onChange={(e) => setSignupData({...signupData, name: e.target.value})}
+                    name="name"
+                    type="text"
                     required
+                    placeholder="Enter your full name"
                   />
                 </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
                     id="signup-email"
+                    name="email"
                     type="email"
-                    value={signupData.email}
-                    onChange={(e) => setSignupData({...signupData, email: e.target.value})}
                     required
+                    placeholder="Enter your email"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={signupData.password}
-                    onChange={(e) => setSignupData({...signupData, password: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
+                <div>
                   <Label htmlFor="signup-phone">Phone Number</Label>
                   <Input
                     id="signup-phone"
-                    value={signupData.phone}
-                    onChange={(e) => setSignupData({...signupData, phone: e.target.value})}
+                    name="phone"
+                    type="tel"
                     required
+                    placeholder="Enter your phone number"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="account-type">Account Type</Label>
-                  <Select value={signupData.accountType} onValueChange={(value) => setSignupData({...signupData, accountType: value})}>
+                <div>
+                  <Label htmlFor="signup-account-type">Account Type</Label>
+                  <Select name="accountType" defaultValue="savings">
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select account type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="savings">Savings Account</SelectItem>
@@ -181,16 +186,27 @@ const Auth = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="initial-balance">Initial Balance (₹)</Label>
+                <div>
+                  <Label htmlFor="signup-initial-balance">Initial Balance (₹)</Label>
                   <Input
-                    id="initial-balance"
+                    id="signup-initial-balance"
+                    name="initialBalance"
                     type="number"
                     min="0"
                     step="0.01"
-                    value={signupData.initialBalance}
-                    onChange={(e) => setSignupData({...signupData, initialBalance: e.target.value})}
-                    placeholder="0.00"
+                    placeholder="Enter initial balance"
+                    defaultValue="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="signup-password">Password</Label>
+                  <Input
+                    id="signup-password"
+                    name="password"
+                    type="password"
+                    required
+                    placeholder="Create a password"
+                    minLength={6}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
