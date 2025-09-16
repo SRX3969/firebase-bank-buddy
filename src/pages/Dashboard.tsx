@@ -7,7 +7,9 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { BankingOperations } from '@/components/banking/BankingOperations';
 import { TransactionHistory } from '@/components/banking/TransactionHistory';
-import { LogOut, IndianRupee } from 'lucide-react';
+import { Navigation } from '@/components/layout/Navigation';
+import { LoadingState } from '@/components/ui/loading-spinner';
+import { IndianRupee, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -86,53 +88,106 @@ const Dashboard = () => {
 
   if (loading || profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <LoadingState>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </LoadingState>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-center text-muted-foreground">Failed to load profile data</p>
-            <Button onClick={() => window.location.reload()} className="w-full mt-4">
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-center text-muted-foreground">Failed to load profile data</p>
+              <Button onClick={() => window.location.reload()} className="w-full mt-4">
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold">Bank Management System</h1>
-            <Button onClick={handleSignOut} variant="outline" size="sm">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Navigation userName={profile.name} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Message */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground">
+            Welcome back, {profile.name}! 👋
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Here's your account summary for today
+          </p>
+        </div>
+
+        {/* Account Summary Cards */}
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
+              <PiggyBank className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <IndianRupee className="h-5 w-5 text-primary" />
+                <div className="text-2xl font-bold text-primary">
+                  {formatCurrency(profile.balance).replace('₹', '')}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {profile.account_type} account
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Deposits</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(profile.balance)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                This month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Withdrawals</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {formatCurrency(0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                This month
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Account Overview */}
+          {/* Account Details */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>Account Overview</CardTitle>
-                <CardDescription>Your account details</CardDescription>
+                <CardTitle>Account Details</CardTitle>
+                <CardDescription>Your personal information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -147,14 +202,11 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground">Phone</p>
                   <p className="text-lg font-medium">{profile.phone}</p>
                 </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">Current Balance</p>
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className="h-6 w-6 text-primary" />
-                    <p className="text-3xl font-bold text-primary">
-                      {formatCurrency(profile.balance).replace('₹', '')}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Account ID</p>
+                  <p className="text-sm font-mono text-muted-foreground">
+                    {profile.id.slice(0, 8)}...
+                  </p>
                 </div>
               </CardContent>
             </Card>
